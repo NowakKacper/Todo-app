@@ -1,0 +1,17 @@
+spring:
+  h2.console:
+    enabled: true
+    path: '/console'
+
+  datasource:
+    url: 'jdbc:h2:file:C:/Users/User/Desktop/programowanie Java/kurs z Udemy/Java - Spring Framework/Sekcja 1 - Spring Boot/todo-app/todo-db'
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'

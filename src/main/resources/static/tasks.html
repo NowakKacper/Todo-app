@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App: groups</title>
+    <link rel="stylesheet" href="https://igoradamenko.com/awsm.css/v2/css/awsm.min.css">
+</head>
+<body>
+<main>
+    <fieldset>
+        <form>
+            <label>Opis
+                <input type="text" name="description" />
+            </label>
+            <label>Deadline
+                <input type="datetime-local" name="deadline" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}" />
+            </label>
+            <button type="submit">Dodaj!</button>
+        </form>
+    </fieldset>
+</main>
+<script>
+    (async function() {
+        const main = document.querySelector('main'); //znajujemy element main na stronie i do tego maina będą doczepiane
+        // kolejne rzeczy
+        const params = new URLSearchParams(location.search); //w tym miejscu pobierane są parametry jakie znajdują się po
+        // znaku zapytania ? w adresie url, location jest to adres url, a search parametry zapytania
+        const response = params.has('group') ? await fetch(`/groups/${params.get('group')}`) : await fetch('/tasks'); //w tym
+        //miejscu w zależności od tego jaki jest parametr zapytania odwołujemy się do innego endpointa;
+        //fetch jest to strzał do naszego backendu, wykonanie żądania http, to jest taki mini klient, taki nasz postman
+        // tylko że dostępny w przeglądarkach, no i zanim fetch dostarczy nam dane to ta akcja jest odroczona w czasie
+        // dzięki temu że funkcja jest asynch i jest użyte await, bo trzeba zaczekać ażfetch uzyska wszystkie dane wymagane
+        // w zapytaniu jakby,
+        if (response.ok) { //dla uzyskanej odpowiedzi sprawdza się czy status jest ok
+            const tasks = await response.json(); //jeśli jest to następuje działanie na tych taskach, tu są przekształcane na json
+            const list = document.createElement('ul');
+            tasks.forEach(task => list.appendChild(createTask(task))); //a następnie dla każdego z nich generowany jest ich
+            // kod html przy pomocy metody createTask() i podpina do listy
+            main.prepend(list); //tutaj lista jest podpinana do elementu main
+        }
+        const form = document.querySelector('form'); //znajdujemy formularz
+        form.addEventListener('submit', async (event) => { //podpina się do niego obsługę zdarzenia submit, bo nie chcemy
+            // żeby przeglądarka nam się przeładowała, albo żeby poszło jakieś żądanie post
+            event.preventDefault(); //tutaj zebazpieczamy się przed wykonaniem domyślnego zachowania dla tego przycisku
+            const resp = await fetch('/tasks', {
+                method: 'post',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    description: form.elements.description.value,
+                    deadline: form.elements.deadline.value && form.elements.deadline.value + ':00.000' //w js jest taki
+                    // trick że null albo undefine wsadzając do if są traktowane jako false, dzięki czemu tutaj działą to
+                    // tak że jeśli deadline ma jakąś wartość to jest dopisyana do niego końcówka czyli sekundy i milisekundy
+                    // a jak nie ma deadlina to nic nie jest dopisywane bo od razu przeskakuje się do kolejnej linii
+                })
+            });
+            if (resp.ok) {
+                const taskFromServer = await resp.json();
+                document.querySelector('ul').appendChild(createTask(taskFromServer));
+                form.reset();
+            }
+        });
+
+        function createTask({ id, description, deadline, done }) {
+            const result = document.createElement('li');
+            result.innerHTML = `
+                <label>
+                    <input type="checkbox" ${done ? ' checked' : ''}/>
+                    ${description}
+                    <small>${deadline && deadline.replace('T', ' ')}</small>
+                </label>
+            `;
+            result.querySelector('input').addEventListener('click', async (e) => {
+                const response = await fetch(`/tasks/${id}`, { method: 'PATCH' });
+                if (!response.ok) {
+                    e.target.checked = !e.target.checked;
+                }
+            });
+            return result;
+        }
+    })();
+</script>
+</body>
+</html>
